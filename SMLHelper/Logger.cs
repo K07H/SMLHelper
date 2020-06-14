@@ -12,11 +12,13 @@
         Error = 3,
     }
 
-    internal static class Logger
+    public static class Logger
     {
         internal static bool Initialized = false;
+        
+        /// <summary>Public getter that can be accessed by mods to know if debug logs are enabled.</summary>
+        public static bool EnableDebugging { get; private set; }
 
-        internal static bool EnableDebugging { get; private set; }
         internal static void SetDebugging(bool value)
         {
             string configPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "EnableDebugLogs.txt");

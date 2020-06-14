@@ -10,18 +10,16 @@
         /// <summary>
         /// Works like <see cref="Path.Combine(string, string)"/>, but can have more than 2 paths
         /// </summary>
-        /// <param name="one"></param>
-        /// <param name="two"></param>
-        /// <param name="rest"></param>
-        /// <returns></returns>
+        /// <param name="one">The first part of the path.</param>
+        /// <param name="two">The second part of the path.</param>
+        /// <param name="rest">Optional: Additional path parts to concatenate at the end.</param>
+        /// <returns>Returns combined path parts as a single path.</returns>
         public static string Combine(string one, string two, params string[] rest)
         {
             string path = Path.Combine(one, two);
 
             foreach (string str in rest)
-            {
                 path = Path.Combine(path, str);
-            }
 
             return path;
         }
