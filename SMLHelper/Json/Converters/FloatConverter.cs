@@ -2,7 +2,11 @@
 {
     using System;
     using System.Globalization;
+#if SUBNAUTICA_STABLE
     using Oculus.Newtonsoft.Json;
+#else
+    using Newtonsoft.Json;
+#endif
 
     /// <summary>
     /// A <see cref="JsonConverter"/> for rounding floats or doubles to a given number of decimal places,
@@ -46,23 +50,14 @@
         /// <param name="serializer"></param>
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
+            double d = Convert.ToDouble(value);
             if (DecimalPlaces > -1)
             {
-                double d;
-                if (value is float)
-                {
-                    d = Math.Round((float)value, DecimalPlaces, Mode);
-                    writer.WriteValue(float.Parse(d.ToString(CultureInfo.InvariantCulture).TrimEnd('0')));
-                }
-                else
-                {
-                    d = Math.Round((double)value, DecimalPlaces, Mode);
-                    writer.WriteValue(double.Parse(d.ToString(CultureInfo.InvariantCulture).TrimEnd('0')));
-                }
+                writer.WriteValue(Math.Round(d, DecimalPlaces, Mode).ToString(CultureInfo.InvariantCulture.NumberFormat));
             }
             else
             {
-                writer.WriteValue(value);
+                writer.WriteValue(d.ToString(CultureInfo.InvariantCulture.NumberFormat));
             }
         }
 
@@ -79,11 +74,11 @@
             var s = (string)reader.Value;
             if (objectType == typeof(float))
             {
-                return float.Parse(s);
+                return float.Parse(s, CultureInfo.InvariantCulture.NumberFormat);
             }
             else
             {
-                return double.Parse(s);
+                return double.Parse(s, CultureInfo.InvariantCulture.NumberFormat);
             }
         }
 

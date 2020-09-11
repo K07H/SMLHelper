@@ -1,6 +1,6 @@
 ﻿namespace SMLHelper.V2.Patchers
 {
-    using Harmony;
+    using HarmonyLib;
     using QModManager.API;
     using SMLHelper.V2.Handlers;
     using SMLHelper.V2.Patchers.EnumPatching;
@@ -16,7 +16,7 @@
     {
         internal static bool DisableEnumIsDefinedPatch = false;
 
-        internal static void Patch(HarmonyInstance harmony)
+        internal static void Patch(Harmony harmony)
         {
             Initialize();
 
@@ -28,10 +28,13 @@
 
             harmony.Patch(AccessTools.Method(typeof(TooltipFactory), nameof(TooltipFactory.BuildTech)),
                 transpiler: new HarmonyMethod(AccessTools.Method(typeof(TooltipPatcher), nameof(TooltipPatcher.Transpiler))));
-
+#if BELOWZERO_EXP
+            harmony.Patch(AccessTools.Method(typeof(TooltipFactory), nameof(TooltipFactory.CraftRecipe)),
+                transpiler: new HarmonyMethod(AccessTools.Method(typeof(TooltipPatcher), nameof(TooltipPatcher.Transpiler))));
+#else
             harmony.Patch(AccessTools.Method(typeof(TooltipFactory), nameof(TooltipFactory.Recipe)),
                 transpiler: new HarmonyMethod(AccessTools.Method(typeof(TooltipPatcher), nameof(TooltipPatcher.Transpiler))));
-
+#endif
             Logger.Log("TooltipPatcher is done.", LogLevel.Debug);
         }
 
@@ -106,13 +109,10 @@
 
         internal static bool IsVanillaTechType(TechType type)
         {
-            DisableEnumIsDefinedPatch = true;
-            bool result = Enum.IsDefined(typeof(TechType), type);
-            DisableEnumIsDefinedPatch = false;
-            return result;
+            return type <= TechType.Databox;
         }
 
-        #region Options
+#region Options
 
         internal enum ExtraItemInfo
         {
@@ -188,9 +188,9 @@
             }
         }
 
-        #endregion
+#endregion
 
-        #region Patches
+#region Patches
 
         internal static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase method)
         {
@@ -234,6 +234,6 @@
             return codes;
         }
 
-        #endregion
+#endregion
     }
 }

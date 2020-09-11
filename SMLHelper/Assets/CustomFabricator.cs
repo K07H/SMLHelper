@@ -1,11 +1,18 @@
 ﻿namespace SMLHelper.V2.Assets
 {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using SMLHelper.V2.Crafting;
     using SMLHelper.V2.Handlers;
     using UnityEngine;
     using Logger = V2.Logger;
+
+#if SUBNAUTICA
+    using Sprite = Atlas.Sprite;
+#elif BELOWZERO
+    using Sprite = UnityEngine.Sprite;
+#endif
 
     /// <summary>
     /// An asset class inheriting from <seealso cref="Buildable"/> that streamlines the process of creating a custom fabricator with a custom crafting tree.
@@ -144,23 +151,78 @@
         /// <returns></returns>
         public override GameObject GetGameObject()
         {
+#if SUBNAUTICA_EXP
+            return null;
+#else
+            GameObject prefab = this.Model switch
+            {
+                Models.Fabricator => GameObject.Instantiate(CraftData.GetPrefabForTechType(TechType.Fabricator)),
+                Models.Workbench => GameObject.Instantiate(CraftData.GetPrefabForTechType(TechType.Workbench)),
+#if SUBNAUTICA
+                Models.MoonPool => GameObject.Instantiate(Resources.Load<GameObject>("Submarine/Build/CyclopsFabricator")),
+#endif
+                Models.Custom => GetCustomCrafterPreFab(),
+                _ => null
+            };
+
+            return ProcessPrefab(prefab);
+#endif
+        }
+
+        /// <summary>
+        /// The in-game <see cref="GameObject"/>, async way.
+        /// </summary>
+        /// <returns></returns>
+        public override IEnumerator GetGameObjectAsync(IOut<GameObject> gameObject)
+        {
             GameObject prefab;
+            var taskResult = new TaskResult<GameObject>();
+
+            switch (this.Model)
+            {
+                case Models.Fabricator:
+                default:
+                    yield return CraftData.GetPrefabForTechTypeAsync(TechType.Fabricator, false, taskResult);
+                    prefab = GameObject.Instantiate(taskResult.Get());
+                    break;
+                case Models.Workbench:
+                    yield return CraftData.GetPrefabForTechTypeAsync(TechType.Workbench, false, taskResult);
+                    prefab = GameObject.Instantiate(taskResult.Get());
+                    break;
+#if SUBNAUTICA
+                case Models.MoonPool:
+#pragma warning disable CS0618 // obsolete
+                    var request = UWE.PrefabDatabase.GetPrefabForFilenameAsync("Submarine/Build/CyclopsFabricator.prefab");
+#pragma warning restore CS0618
+                    yield return request;
+                    request.TryGetPrefab(out prefab);
+                    prefab = GameObject.Instantiate(prefab);
+                    break;
+#endif
+                case Models.Custom:
+                    yield return GetCustomCrafterPreFabAsync(taskResult);
+                    prefab = taskResult.Get();
+                    break;
+            };
+
+            gameObject.Set(ProcessPrefab(prefab));
+        }
+
+        private GameObject ProcessPrefab(GameObject prefab)
+        {
             Constructable constructible = null;
             GhostCrafter crafter;
             switch (this.Model)
             {
                 case Models.Fabricator:
                 default:
-                    prefab = GameObject.Instantiate(CraftData.GetPrefabForTechType(TechType.Fabricator));
                     crafter = prefab.GetComponent<Fabricator>();
                     break;
                 case Models.Workbench:
-                    prefab = GameObject.Instantiate(CraftData.GetPrefabForTechType(TechType.Workbench));
                     crafter = prefab.GetComponent<Workbench>();
                     break;
 #if SUBNAUTICA
                 case Models.MoonPool:
-                    prefab = GameObject.Instantiate(Resources.Load<GameObject>("Submarine/Build/CyclopsFabricator"));
                     crafter = prefab.GetComponent<Fabricator>();
 
                     // Add prefab ID because CyclopsFabricator normaly doesn't have one
@@ -188,7 +250,6 @@
                     break;
 #endif
                 case Models.Custom:
-                    prefab = GetCustomCrafterPreFab();
                     crafter = prefab.EnsureComponent<Fabricator>();
                     break;
             }
@@ -210,7 +271,7 @@
             constructible.rotationEnabled = this.RotationEnabled;
             constructible.techType = this.TechType; // This was necessary to correctly associate the recipe at building time            
 
-            SkyApplier skyApplier = prefab.GetComponent<SkyApplier>();
+            SkyApplier skyApplier = prefab.EnsureComponent<SkyApplier>();
             skyApplier.renderers = prefab.GetComponentsInChildren<Renderer>();
             skyApplier.anchorSky = Skies.Auto;
 
@@ -235,6 +296,15 @@
         }
 
         /// <summary>
+        /// Override this method if you want to provide your own prefab and model for your custom fabricator.<para/>
+        /// </summary>
+        /// <returns></returns>
+        protected virtual IEnumerator GetCustomCrafterPreFabAsync(IOut<GameObject> gameObject)
+        {
+            throw new NotImplementedException($"To use a custom fabricator model, the prefab must be created in {nameof(GetCustomCrafterPreFabAsync)}.");
+        }
+
+        /// <summary>
         /// Override this method if you want full control over how your custom craft tree is built up.<para/>
         /// To use this method's default behavior, you must use the following methods to build up your crafting tree.<para/>
         /// - <see cref="AddCraftNode(TechType, string)"/><para/>
@@ -253,25 +323,7 @@
             foreach (Action action in OrderedCraftTreeActions)
                 action.Invoke();
         }
-#if SUBNAUTICA
-        /// <summary>
-        /// Adds a new tab node to the custom crafting tree of this fabricator.
-        /// </summary>
-        /// <param name="tabId">The internal ID for the tab node.</param>
-        /// <param name="displayText">The in-game text shown for the tab node.</param>
-        /// <param name="tabSprite">The sprite used for the tab node.</param>
-        /// <param name="parentTabId">Optional. The parent tab of this tab.<para/>
-        /// When this value is null, the tab will be added to the root of the craft tree.</param>
-        public void AddTabNode(string tabId, string displayText, Atlas.Sprite tabSprite, string parentTabId = null)
-        {
-            OrderedCraftTreeActions.Add(() =>
-            {
-                ModCraftTreeLinkingNode parentNode = CraftTreeLinkingNodes[parentTabId ?? RootNode];
-                ModCraftTreeTab tab = parentNode.AddTabNode(tabId, displayText, tabSprite);
-                CraftTreeLinkingNodes[tabId] = tab;
-            });
-        }
-#elif BELOWZERO
+
         /// <summary>
         /// Adds a new tab node to the custom crafting tree of this fabricator.
         /// </summary>
@@ -289,7 +341,6 @@
                 CraftTreeLinkingNodes[tabId] = tab;
             });
         }
-#endif
 
         /// <summary>
         /// Adds a new crafting node to the custom crafting tree of this fabricator.

@@ -2,18 +2,20 @@
 {
     using System;
     using System.Reflection;
-    using Harmony;
+    using HarmonyLib;
     using Patchers;
     using Patchers.EnumPatching;
     using QModManager.API.ModLoading;
+    using QModManager.Utility;
 
     /// <summary>
     /// WARNING: This class is for use only by QModManager.
     /// </summary>
     [QModCore]
-    [Obsolete("This class is for use only by QModManager.", true)]
     public class Initializer
     {
+        internal static readonly Harmony harmony = new Harmony("com.ahk1221.smlhelper");
+
         /// <summary>
         /// WARNING: This method is for use only by QModManager.
         /// </summary>
@@ -32,6 +34,8 @@
             TechTypePatcher.cacheManager.LoadCache();
             Logger.Debug("Loading CraftTreeType Cache");
             CraftTreeTypePatcher.cacheManager.LoadCache();
+
+            PrefabDatabasePatcher.PrePatch(harmony);
         }
 
         /// <summary>
@@ -41,21 +45,6 @@
         [Obsolete("This method is for use only by QModManager.", true)]
         public static void PostPatch()
         {
-            try
-            {
-                Initialize();
-            }
-            catch (Exception e)
-            {
-                Logger.Error($"Caught exception while trying to initialize SMLHelper{Environment.NewLine}{e}");
-            }
-        }
-
-
-        private static void Initialize()
-        {
-            var harmony = HarmonyInstance.Create("com.ahk1221.smlhelper");
-
             FishPatcher.Patch(harmony);
 
             TechTypePatcher.Patch();
@@ -67,10 +56,10 @@
             CraftTreePatcher.Patch(harmony);
             DevConsolePatcher.Patch(harmony);
             LanguagePatcher.Patch(harmony);
-            PrefabDatabasePatcher.Patch(harmony);
+            PrefabDatabasePatcher.PostPatch(harmony);
             SpritePatcher.Patch();
             KnownTechPatcher.Patch(harmony);
-            BioReactorPatcher.Patch(harmony);
+            BioReactorPatcher.Patch();
             OptionsPanelPatcher.Patch(harmony);
             ItemsContainerPatcher.Patch(harmony);
             PDAPatcher.Patch(harmony);

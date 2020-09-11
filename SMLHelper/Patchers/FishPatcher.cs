@@ -2,7 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
-    using Harmony;
+    using HarmonyLib;
     using SMLHelper.V2.Handlers;
     using UnityEngine;
     using Logger = V2.Logger;
@@ -12,7 +12,7 @@
     {
         internal static List<Creature> usedCreatures = new List<Creature>();
 
-        public static void Patch(HarmonyInstance harmony)
+        public static void Patch(Harmony harmony)
         {
             Type creatureType = typeof(Creature);
             Type thisType = typeof(FishPatcher);
@@ -36,9 +36,11 @@
             {
                 int randomIndex = Random.Range(0, FishHandler.fishTechTypes.Count);
                 TechType randomFish = FishHandler.fishTechTypes[randomIndex];
-
+#if SUBNAUTICA_EXP
+                GameObject fish = null;
+#else
                 GameObject fish = CraftData.InstantiateFromPrefab(randomFish);
-
+#endif
                 // Deletes the fish if it is a ground creature spawned in water
                 if (fish.GetComponent<WalkOnGround>() && !__instance.GetComponent<WalkOnGround>())
                 {

@@ -6,7 +6,11 @@
     using System.Text;
     using System.Threading;
     using System.Reflection;
+#if SUBNAUTICA_STABLE
     using Oculus.Newtonsoft.Json;
+#else
+    using Newtonsoft.Json;
+#endif
 
     /// <summary>
     /// A collection of utilities for interacting with JSON files.
@@ -65,9 +69,11 @@
                         serializedJson, jsonConverters
                     );
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     Logger.Announce($"Could not parse JSON file, loading default values: {path}", LogLevel.Warn, true);
+                    Logger.Error(ex.Message);
+                    Logger.Error(ex.StackTrace);
                     return new T();
                 }
             }
@@ -116,9 +122,11 @@
                         serializedJson, jsonObject, jsonSerializerSettings
                     );
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     Logger.Announce($"Could not parse JSON file, instance values unchanged: {path}", LogLevel.Warn, true);
+                    Logger.Error(ex.Message);
+                    Logger.Error(ex.StackTrace);
                 }
             }
             else if (createFileIfNotExist)
